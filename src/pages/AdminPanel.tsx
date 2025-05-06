@@ -14,7 +14,7 @@ import { Check, Eye, Info, MessageSquare, Plus, Tag, Trash, User, X } from 'luci
 import { useToast } from '@/components/ui/use-toast';
 
 const AdminPanel: React.FC = () => {
-  const { categories, items, messages, addCategory, updateCategory, deleteCategory, updateItem, deleteMessage, markMessageAsRead } = useData();
+  const { categories, items, messages, addCategory, updateCategory, deleteCategory, updateItem, deleteItem, deleteMessage, markMessageAsRead } = useData();
   const { toast } = useToast();
 
   // State for category dialog
