@@ -94,6 +94,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setItems(formattedItems);
 
       // Fetch messages if user is admin
+      let currentMessages: Message[] = [];
       if (user?.role === 'admin') {
         const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
@@ -101,7 +102,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (messagesError) throw messagesError;
         
-        const formattedMessages: Message[] = messagesData.map(msg => ({
+        currentMessages = messagesData.map(msg => ({
           id: msg.id,
           name: msg.name,
           email: msg.email,
@@ -111,11 +112,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isRead: msg.is_read
         }));
         
-        setMessages(formattedMessages);
+        setMessages(currentMessages);
       }
 
       // Update stats
-      updateStats(formattedItems, formattedCategories, user?.role === 'admin' ? messagesData || [] : []);
+      updateStats(formattedItems, formattedCategories, currentMessages);
     } catch (error: any) {
       console.error('Error fetching data:', error.message);
       toast({
@@ -193,7 +194,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: data.title,
         description: data.description,
         category: data.category,
-        status: data.status,
+        status: data.status as 'lost' | 'found' | 'claimed',
         date: data.date,
         location: data.location,
         image: data.image,

@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 id: currentSession.user.id,
                 name: profile.name,
                 email: profile.email,
-                role: profile.role,
+                role: profile.role as 'admin' | 'student',
               });
             }
           }, 0);
@@ -77,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 id: currentSession.user.id,
                 name: profile.name,
                 email: profile.email,
-                role: profile.role,
+                role: profile.role as 'admin' | 'student',
               });
             }
             setIsLoading(false);
