@@ -1,12 +1,17 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
+import { useToast } from '@/components/ui/use-toast';
 
 interface AuthContextProps {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  signup: (email: string, password: string, name: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -21,58 +26,147 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { toast } = useToast();
 
-  // Check for existing user in localStorage
+  // Initialize auth state
   useEffect(() => {
-    const storedUser = localStorage.getItem('traceCloudUser');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // First set up the auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        setSession(currentSession);
+        if (currentSession?.user) {
+          // Get the user profile data
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', currentSession.user.id)
+              .single();
+
+            if (profile) {
+              setUser({
+                id: currentSession.user.id,
+                name: profile.name,
+                email: profile.email,
+                role: profile.role,
+              });
+            }
+          }, 0);
+        } else {
+          setUser(null);
+        }
+      }
+    );
+
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        // Get the user profile data
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', currentSession.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              setUser({
+                id: currentSession.user.id,
+                name: profile.name,
+                email: profile.email,
+                role: profile.role,
+              });
+            }
+            setIsLoading(false);
+          });
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      // Mock login functionality - in real app, this would be a backend call
-      if (email === 'admin@tracecloud.rit.edu' && password === 'admin123') {
-        const adminUser: User = {
-          id: '1',
-          name: 'Admin User',
-          email: 'admin@tracecloud.rit.edu',
-          role: 'admin',
-        };
-        setUser(adminUser);
-        localStorage.setItem('traceCloudUser', JSON.stringify(adminUser));
-        return true;
-      } else if (email === 'student@rit.edu' && password === 'student123') {
-        const studentUser: User = {
-          id: '2',
-          name: 'Student User',
-          email: 'student@rit.edu',
-          role: 'student',
-        };
-        setUser(studentUser);
-        localStorage.setItem('traceCloudUser', JSON.stringify(studentUser));
-        return true;
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('Login failed:', error.message);
+        toast({
+          title: "Login Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
       }
-      return false;
+
+      toast({
+        title: "Login Successful",
+        description: "Welcome to TRACE CLOUD",
+      });
+      return true;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Login error:', error);
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (error) {
+        console.error('Signup failed:', error.message);
+        toast({
+          title: "Signup Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      toast({
+        title: "Signup Successful",
+        description: "Your account has been created. You can now sign in.",
+      });
+      return true;
+    } catch (error) {
+      console.error('Signup error:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('traceCloudUser');
+    setSession(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, isLoading, session }}>
       {children}
     </AuthContext.Provider>
   );

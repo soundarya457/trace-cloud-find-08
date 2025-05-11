@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/components/ui/use-toast';
-import { Item } from '@/types';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 
 const PostItemPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const PostItemPage: React.FC = () => {
   const [location, setLocation] = useState('');
   const [contactEmail, setContactEmail] = useState(user?.email || '');
   const [image, setImage] = useState<string | undefined>(undefined);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get only active categories
@@ -36,6 +38,7 @@ const PostItemPage: React.FC = () => {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setImage(event.target?.result as string);
@@ -44,26 +47,56 @@ const PostItemPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to post an item",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      let imagePath = undefined;
+      
+      // Upload image if exists
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${uuidv4()}.${fileExt}`;
+        const filePath = `items/${fileName}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('items')
+          .upload(filePath, imageFile);
+          
+        if (uploadError) {
+          throw uploadError;
+        }
+        
+        // Get the public URL
+        const { data } = supabase.storage
+          .from('items')
+          .getPublicUrl(filePath);
+          
+        imagePath = data.publicUrl;
+      }
+
       // Create new item with form values
-      const newItem: Omit<Item, 'id'> = {
+      await addItem({
         title,
         description,
         category,
         status,
         date: date || new Date().toISOString(),
         location,
-        image,
+        image: imagePath,
         contactEmail,
-        createdBy: user?.id || 'anonymous',
-      };
-
-      // Add item to database
-      addItem(newItem);
+        createdBy: user.id,
+      });
 
       // Show success message
       toast({
@@ -73,10 +106,10 @@ const PostItemPage: React.FC = () => {
 
       // Redirect to the items page
       navigate('/lost-found');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to post item. Please try again.",
+        description: error.message || "Failed to post item. Please try again.",
         variant: "destructive",
       });
     } finally {
