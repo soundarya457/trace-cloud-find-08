@@ -95,18 +95,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         console.error('Login failed:', error.message);
-        toast({
-          title: "Login Failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        
+        // Special handling for email not confirmed error
+        if (error.message.includes('Email not confirmed')) {
+          // Send another confirmation email
+          const { error: resendError } = await supabase.auth.resend({
+            type: 'signup',
+            email: email,
+          });
+          
+          if (resendError) {
+            toast({
+              title: "Login Failed",
+              description: `Email not confirmed. We couldn't resend the confirmation email: ${resendError.message}`,
+              variant: "destructive",
+            });
+          } else {
+            toast({
+              title: "Email Not Verified",
+              description: "We've sent another verification email. Please check your inbox and verify your email before logging in.",
+              variant: "warning",
+            });
+          }
+        } else {
+          toast({
+            title: "Login Failed",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
         return false;
       }
 
@@ -126,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -146,10 +170,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
-      toast({
-        title: "Signup Successful",
-        description: "Your account has been created. You can now sign in.",
-      });
+      // Check if email confirmation is required
+      if (data?.user && !data?.session) {
+        toast({
+          title: "Signup Successful",
+          description: "Please check your email for a confirmation link to complete your registration.",
+        });
+      } else {
+        toast({
+          title: "Signup Successful",
+          description: "Your account has been created. You can now sign in.",
+        });
+      }
       return true;
     } catch (error) {
       console.error('Signup error:', error);

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoIcon } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
   // Login state
@@ -22,6 +24,7 @@ const LoginPage: React.FC = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [showVerificationInfo, setShowVerificationInfo] = useState(false);
   
   const { login, signup } = useAuth();
   const navigate = useNavigate();
@@ -35,6 +38,9 @@ const LoginPage: React.FC = () => {
       const success = await login(loginEmail, loginPassword);
       if (success) {
         navigate('/dashboard');
+      } else {
+        // If login failed, show verification info
+        setShowVerificationInfo(true);
       }
     } finally {
       setIsLoading(false);
@@ -59,10 +65,8 @@ const LoginPage: React.FC = () => {
       const success = await signup(signupEmail, signupPassword, name);
       if (success) {
         setActiveTab('login');
-        toast({
-          title: "Registration Successful",
-          description: "Your account has been created. You can now sign in.",
-        });
+        // Show verification info after signup
+        setShowVerificationInfo(true);
         
         // Clear the signup form
         setSignupEmail('');
@@ -89,6 +93,18 @@ const LoginPage: React.FC = () => {
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
+            
+            {showVerificationInfo && (
+              <div className="px-4 pb-2">
+                <Alert className="bg-blue-50 border-blue-200">
+                  <InfoIcon className="h-4 w-4 text-blue-500" />
+                  <AlertTitle>Email Verification Required</AlertTitle>
+                  <AlertDescription>
+                    Please check your email inbox for a verification link. You need to verify your email before logging in.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
             
             <TabsContent value="login">
               <CardHeader>
