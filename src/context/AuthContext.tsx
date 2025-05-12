@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             toast({
               title: "Email Not Verified",
               description: "We've sent another verification email. Please check your inbox and verify your email before logging in.",
-              variant: "warning",
+              variant: "default", // Changed from "warning" to "default" to match allowed variants
             });
           }
         } else {
