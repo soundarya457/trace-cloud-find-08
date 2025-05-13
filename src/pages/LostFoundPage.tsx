@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useData } from '@/context/DataContext';
@@ -26,7 +25,7 @@ const LostFoundPage: React.FC = () => {
   });
 
   // Get active categories
-  const activeCategories = categories.filter(category => category.isActive);
+  const activeCategories = categories.filter(cat => cat.is_active);
 
   return (
     <Layout>
@@ -147,7 +146,7 @@ const LostFoundPage: React.FC = () => {
                               </div>
                               <div className="flex items-center">
                                 <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                                <span className="truncate">{item.contactEmail}</span>
+                                <span className="truncate">Contact: {item.contact_email}</span>
                               </div>
                             </div>
                           </CardContent>
