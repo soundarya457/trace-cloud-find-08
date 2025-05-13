@@ -1,513 +1,251 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Item, Category, Message, DashboardStats } from '@/types';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { Category as CategoryType, Item as ItemType, Message as MessageType } from '@/types';
+import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
 
-interface DataContextProps {
-  items: Item[];
+type Category = Tables<'categories'>;
+type Item = Tables<'items'>;
+type Message = Tables<'messages'>;
+
+interface DataContextValue {
   categories: Category[];
+  items: Item[];
   messages: Message[];
-  stats: DashboardStats;
-  addItem: (item: Omit<Item, 'id'>) => Promise<void>;
-  addCategory: (category: Omit<Category, 'id'>) => Promise<void>;
-  addMessage: (message: Omit<Message, 'id' | 'date' | 'isRead'>) => Promise<void>;
-  updateItem: (id: string, item: Partial<Item>) => Promise<void>;
-  updateCategory: (id: string, category: Partial<Category>) => Promise<void>;
-  markMessageAsRead: (id: string) => Promise<void>;
-  deleteItem: (id: string) => Promise<void>;
+  loading: boolean;
+  addCategory: (category: Omit<Category, "id" | "created_at">) => Promise<void>;
+  updateCategory: (id: string, updates: TablesUpdate<'categories'>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
+  addItem: (item: Omit<Item, "id" | "created_at">) => Promise<void>;
+  updateItem: (id: string, updates: TablesUpdate<'items'>) => Promise<void>;
+  deleteItem: (id: string) => Promise<void>;
+  addMessage: (message: Omit<Message, "id" | "date" | "isRead">) => Promise<void>;
   deleteMessage: (id: string) => Promise<void>;
-  refreshData: () => Promise<void>;
-  isLoading: boolean;
+  markMessageAsRead: (id: string) => Promise<void>;
 }
 
-const DataContext = createContext<DataContextProps | undefined>(undefined);
+const DataContext = createContext<DataContextValue | undefined>(undefined);
 
-export const useData = () => {
-  const context = useContext(DataContext);
-  if (!context) {
-    throw new Error('useData must be used within a DataProvider');
-  }
-  return context;
-};
+interface DataProviderProps {
+  children: React.ReactNode;
+}
 
-export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [items, setItems] = useState<Item[]>([]);
+export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
-  // Calculate dashboard stats
-  const [stats, setStats] = useState<DashboardStats>({
-    totalLostItems: 0,
-    totalFoundItems: 0,
-    totalClaimedItems: 0,
-    totalPendingItems: 0,
-    totalMessages: 0,
-    activeCategories: 0,
-    inactiveCategories: 0,
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      // Fetch categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*');
+        if (categoriesError) throw categoriesError;
+        setCategories(categoriesData || []);
 
-      if (categoriesError) throw categoriesError;
-      
-      const formattedCategories: Category[] = categoriesData.map(cat => ({
-        id: cat.id,
-        name: cat.name,
-        description: cat.description,
-        isActive: cat.is_active
-      }));
-      
-      setCategories(formattedCategories);
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('items')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      // Fetch items
-      const { data: itemsData, error: itemsError } = await supabase
-        .from('items')
-        .select('*');
+        if (itemsError) throw itemsError;
+        setItems(itemsData || []);
 
-      if (itemsError) throw itemsError;
-
-      const formattedItems: Item[] = itemsData.map(item => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        category: item.category,
-        status: item.status as 'lost' | 'found' | 'claimed',
-        date: item.date,
-        location: item.location,
-        image: item.image,
-        contactEmail: item.contact_email,
-        createdBy: item.created_by
-      }));
-
-      setItems(formattedItems);
-
-      // Fetch messages if user is admin
-      let currentMessages: Message[] = [];
-      if (user?.role === 'admin') {
         const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
           .select('*')
-          .order('date', { ascending: false });
+          .order('created_at', { ascending: false });
 
         if (messagesError) throw messagesError;
-        
-        currentMessages = messagesData.map(msg => ({
-          id: msg.id,
-          name: msg.name,
-          email: msg.email,
-          subject: msg.subject,
-          message: msg.message,
-          date: msg.date,
-          isRead: msg.is_read
-        }));
-        
-        setMessages(currentMessages);
+        setMessages(messagesData || []);
+
+      } catch (error: any) {
+        console.error('Error fetching data:', error.message);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      // Update stats
-      updateStats(formattedItems, formattedCategories, currentMessages);
-    } catch (error: any) {
-      console.error('Error fetching data:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to fetch data. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    fetchData();
+  }, []);
 
-  // Update stats whenever data changes
-  const updateStats = (
-    currentItems: Item[], 
-    currentCategories: Category[], 
-    currentMessages: Message[]
-  ) => {
-    const lostItems = currentItems.filter(item => item.status === 'lost').length;
-    const foundItems = currentItems.filter(item => item.status === 'found').length;
-    const claimedItems = currentItems.filter(item => item.status === 'claimed').length;
-    const pendingItems = lostItems + foundItems;
-    const activeCategories = currentCategories.filter(category => category.isActive).length;
-    const inactiveCategories = currentCategories.filter(category => !category.isActive).length;
-
-    setStats({
-      totalLostItems: lostItems,
-      totalFoundItems: foundItems,
-      totalClaimedItems: claimedItems,
-      totalPendingItems: pendingItems,
-      totalMessages: currentMessages.length,
-      activeCategories,
-      inactiveCategories,
-    });
-  };
-
-  // Fetch data when auth state changes
-  useEffect(() => {
-    if (user) {
-      fetchData();
-    } else {
-      setItems([]);
-      setCategories([]);
-      setMessages([]);
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  const addItem = async (item: Omit<Item, 'id'>) => {
+  const addCategory = async (category: Omit<Category, "id" | "created_at">) => {
     try {
-      if (!user) throw new Error('User not authenticated');
-
-      const newItem = {
-        title: item.title,
-        description: item.description,
-        category: item.category,
-        status: item.status,
-        date: item.date || new Date().toISOString(),
-        location: item.location,
-        image: item.image,
-        contact_email: item.contactEmail,
-        created_by: user.id
-      };
-
-      const { data, error } = await supabase
-        .from('items')
-        .insert(newItem)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const formattedItem: Item = {
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        status: data.status as 'lost' | 'found' | 'claimed',
-        date: data.date,
-        location: data.location,
-        image: data.image,
-        contactEmail: data.contact_email,
-        createdBy: data.created_by
-      };
-
-      setItems(prevItems => [...prevItems, formattedItem]);
-      updateStats([...items, formattedItem], categories, messages);
-    } catch (error: any) {
-      console.error('Error adding item:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to add item. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const addCategory = async (category: Omit<Category, 'id'>) => {
-    try {
-      if (!user || user.role !== 'admin') throw new Error('Unauthorized');
-
-      const newCategory = {
-        name: category.name,
-        description: category.description,
-        is_active: category.isActive
-      };
-
       const { data, error } = await supabase
         .from('categories')
-        .insert(newCategory)
-        .select()
+        .insert([category])
+        .select('*')
         .single();
 
       if (error) throw error;
-
-      const formattedCategory: Category = {
-        id: data.id,
-        name: data.name,
-        description: data.description,
-        isActive: data.is_active
-      };
-
-      setCategories(prevCategories => [...prevCategories, formattedCategory]);
-      updateStats(items, [...categories, formattedCategory], messages);
+      setCategories(prev => [...prev, data]);
     } catch (error: any) {
       console.error('Error adding category:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to add category. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
     }
   };
 
-  const addMessage = async (message: Omit<Message, 'id' | 'date' | 'isRead'>) => {
+  const updateCategory = async (id: string, updates: TablesUpdate<'categories'>) => {
     try {
-      const newMessage = {
-        name: message.name,
-        email: message.email,
-        subject: message.subject,
-        message: message.message,
-        date: new Date().toISOString(),
-        is_read: false
-      };
-
       const { data, error } = await supabase
-        .from('messages')
-        .insert(newMessage)
-        .select()
+        .from('categories')
+        .update(updates)
+        .eq('id', id)
+        .select('*')
         .single();
 
       if (error) throw error;
-
-      if (user?.role === 'admin') {
-        const formattedMessage: Message = {
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          subject: data.subject,
-          message: data.message,
-          date: data.date,
-          isRead: data.is_read
-        };
-
-        setMessages(prevMessages => [formattedMessage, ...prevMessages]);
-        updateStats(items, categories, [...messages, formattedMessage]);
-      }
-      
-      return data;
-    } catch (error: any) {
-      console.error('Error adding message:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const updateItem = async (id: string, itemUpdate: Partial<Item>) => {
-    try {
-      if (!user) throw new Error('User not authenticated');
-
-      const updates: any = {};
-      if (itemUpdate.title) updates.title = itemUpdate.title;
-      if (itemUpdate.description) updates.description = itemUpdate.description;
-      if (itemUpdate.category) updates.category = itemUpdate.category;
-      if (itemUpdate.status) updates.status = itemUpdate.status;
-      if (itemUpdate.date) updates.date = itemUpdate.date;
-      if (itemUpdate.location) updates.location = itemUpdate.location;
-      if (itemUpdate.image !== undefined) updates.image = itemUpdate.image;
-      if (itemUpdate.contactEmail) updates.contact_email = itemUpdate.contactEmail;
-
-      const { error } = await supabase
-        .from('items')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setItems(prevItems =>
-        prevItems.map(item =>
-          item.id === id ? { ...item, ...itemUpdate } : item
-        )
-      );
-      
-      updateStats(
-        items.map(item => (item.id === id ? { ...item, ...itemUpdate } : item)),
-        categories,
-        messages
-      );
-    } catch (error: any) {
-      console.error('Error updating item:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to update item. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const updateCategory = async (id: string, categoryUpdate: Partial<Category>) => {
-    try {
-      if (!user || user.role !== 'admin') throw new Error('Unauthorized');
-
-      const updates: any = {};
-      if (categoryUpdate.name) updates.name = categoryUpdate.name;
-      if (categoryUpdate.description) updates.description = categoryUpdate.description;
-      if (categoryUpdate.isActive !== undefined) updates.is_active = categoryUpdate.isActive;
-
-      const { error } = await supabase
-        .from('categories')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setCategories(prevCategories =>
-        prevCategories.map(category =>
-          category.id === id ? { ...category, ...categoryUpdate } : category
-        )
-      );
-      
-      updateStats(
-        items,
-        categories.map(category => (category.id === id ? { ...category, ...categoryUpdate } : category)),
-        messages
-      );
+      setCategories(prev => prev.map(cat => (cat.id === id ? { ...cat, ...data } : cat)));
     } catch (error: any) {
       console.error('Error updating category:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to update category. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const markMessageAsRead = async (id: string) => {
-    try {
-      if (!user || user.role !== 'admin') throw new Error('Unauthorized');
-
-      const { error } = await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setMessages(prevMessages =>
-        prevMessages.map(message =>
-          message.id === id ? { ...message, isRead: true } : message
-        )
-      );
-    } catch (error: any) {
-      console.error('Error marking message as read:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to update message. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    }
-  };
-
-  const deleteItem = async (id: string) => {
-    try {
-      if (!user) throw new Error('User not authenticated');
-
-      const { error } = await supabase
-        .from('items')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      const updatedItems = items.filter(item => item.id !== id);
-      setItems(updatedItems);
-      updateStats(updatedItems, categories, messages);
-    } catch (error: any) {
-      console.error('Error deleting item:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to delete item. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
     }
   };
 
   const deleteCategory = async (id: string) => {
     try {
-      if (!user || user.role !== 'admin') throw new Error('Unauthorized');
-
       const { error } = await supabase
         .from('categories')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-
-      const updatedCategories = categories.filter(category => category.id !== id);
-      setCategories(updatedCategories);
-      updateStats(items, updatedCategories, messages);
+      setCategories(prev => prev.filter(cat => cat.id !== id));
     } catch (error: any) {
       console.error('Error deleting category:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to delete category. Please try again.",
-        variant: "destructive",
-      });
+    }
+  };
+
+  const addItem = async (item: Omit<Item, "id" | "created_at">) => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .insert([item])
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      setItems(prev => [...prev, data]);
+    } catch (error: any) {
+      console.error('Error adding item:', error.message);
+    }
+  };
+
+  const updateItem = async (id: string, updates: TablesUpdate<'items'>) => {
+    try {
+      const { data, error } = await supabase
+        .from('items')
+        .update(updates)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      setItems(prev => prev.map(item => (item.id === id ? { ...item, ...data } : item)));
+    } catch (error: any) {
+      console.error('Error updating item:', error.message);
+    }
+  };
+
+  const deleteItem = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('items')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch (error: any) {
+      console.error('Error deleting item:', error.message);
+    }
+  };
+
+  const addMessage = async (message: Omit<Message, "id" | "date" | "isRead">) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .insert([
+          {
+            name: message.name,
+            email: message.email,
+            subject: message.subject,
+            message: message.message,
+          }
+        ])
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      
+      setMessages(prev => [...prev, { ...data, isRead: data.is_read }]);
+      
+      return;
+    } catch (error: any) {
+      console.error('Error adding message:', error.message);
       throw error;
     }
   };
 
   const deleteMessage = async (id: string) => {
     try {
-      if (!user || user.role !== 'admin') throw new Error('Unauthorized');
-
       const { error } = await supabase
         .from('messages')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-
-      const updatedMessages = messages.filter(message => message.id !== id);
-      setMessages(updatedMessages);
-      updateStats(items, categories, updatedMessages);
+      setMessages(prev => prev.filter(message => message.id !== id));
     } catch (error: any) {
       console.error('Error deleting message:', error.message);
-      toast({
-        title: "Error",
-        description: "Failed to delete message. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
     }
   };
 
-  const refreshData = async () => {
-    await fetchData();
+  const markMessageAsRead = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      setMessages(prev => prev.map(message => (message.id === id ? { ...message, ...data } : message)));
+    } catch (error: any) {
+      console.error('Error marking message as read:', error.message);
+    }
+  };
+
+  const value: DataContextValue = {
+    categories,
+    items,
+    messages,
+    loading,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addItem,
+    updateItem,
+    deleteItem,
+    addMessage,
+    deleteMessage,
+    markMessageAsRead,
   };
 
   return (
-    <DataContext.Provider
-      value={{
-        items,
-        categories,
-        messages,
-        stats,
-        addItem,
-        addCategory,
-        addMessage,
-        updateItem,
-        updateCategory,
-        markMessageAsRead,
-        deleteItem,
-        deleteCategory,
-        deleteMessage,
-        refreshData,
-        isLoading,
-      }}
-    >
+    <DataContext.Provider value={value}>
       {children}
     </DataContext.Provider>
   );
+};
+
+export const useData = () => {
+  const context = useContext(DataContext);
+  if (context === undefined) {
+    throw new Error('useData must be used within a DataProvider');
+  }
+  return context;
 };
