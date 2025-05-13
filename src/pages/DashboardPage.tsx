@@ -135,7 +135,7 @@ const DashboardPage: React.FC = () => {
                           <p className="text-sm text-muted-foreground">{message.name}</p>
                         </div>
                         <span className={`h-2 w-2 rounded-full ${
-                          message.isRead ? 'bg-gray-300' : 'bg-blue-500'
+                          message.is_read ? 'bg-gray-300' : 'bg-blue-500'
                         }`} />
                       </div>
                     ))}

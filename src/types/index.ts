@@ -15,15 +15,15 @@ export interface Item {
   date: string;
   location: string;
   image?: string;
-  contactEmail: string;
-  createdBy: string;
+  contact_email: string; // Changed from contactEmail to contact_email
+  created_by: string; // Changed from createdBy to created_by
 }
 
 export interface Category {
   id: string;
   name: string;
   description: string;
-  isActive: boolean;
+  is_active: boolean; // Changed from isActive to is_active
 }
 
 export interface Message {
@@ -33,7 +33,7 @@ export interface Message {
   subject: string;
   message: string;
   date: string;
-  isRead: boolean;
+  is_read: boolean; // Changed from isRead to is_read
 }
 
 export interface DashboardStats {

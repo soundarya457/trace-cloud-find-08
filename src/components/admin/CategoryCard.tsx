@@ -22,9 +22,9 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
         <CardTitle className="flex items-center justify-between">
           <span>{category.name}</span>
           <span className={`px-2 py-1 rounded-full text-xs uppercase ${
-            category.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            category.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
           }`}>
-            {category.isActive ? 'Active' : 'Inactive'}
+            {category.is_active ? 'Active' : 'Inactive'}
           </span>
         </CardTitle>
       </CardHeader>
@@ -34,9 +34,9 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onToggleStatus(category.id, category.isActive)}
+            onClick={() => onToggleStatus(category.id, category.is_active)}
           >
-            {category.isActive ? 'Deactivate' : 'Activate'}
+            {category.is_active ? 'Deactivate' : 'Activate'}
           </Button>
           <Button 
             variant="destructive" 

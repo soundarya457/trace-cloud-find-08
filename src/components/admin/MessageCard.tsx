@@ -19,7 +19,7 @@ const MessageCard: React.FC<MessageCardProps> = ({ message, onView, onDelete }) 
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center">
             <span>{message.subject}</span>
-            {!message.isRead && (
+            {!message.is_read && (
               <span className="ml-2 h-2 w-2 rounded-full bg-blue-500"></span>
             )}
             {message.subject.includes('Feedback:') && (

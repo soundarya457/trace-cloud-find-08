@@ -21,7 +21,7 @@ const CategoriesTab: React.FC = () => {
     addCategory({
       name: newCategoryName,
       description: newCategoryDescription,
-      isActive: newCategoryStatus === 'active',
+      is_active: newCategoryStatus === 'active',
     });
 
     toast({
@@ -36,7 +36,7 @@ const CategoriesTab: React.FC = () => {
   };
 
   const handleToggleCategoryStatus = (id: string, currentStatus: boolean) => {
-    updateCategory(id, { isActive: !currentStatus });
+    updateCategory(id, { is_active: !currentStatus });
     
     toast({
       title: "Category Updated",

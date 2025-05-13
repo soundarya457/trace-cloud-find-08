@@ -1,24 +1,22 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Category as CategoryType, Item as ItemType, Message as MessageType } from '@/types';
+import { Category, Item, Message, DashboardStats } from '@/types';
 import { Tables, TablesInsert, TablesUpdate } from '@/integrations/supabase/types';
-
-type Category = Tables<'categories'>;
-type Item = Tables<'items'>;
-type Message = Tables<'messages'>;
 
 interface DataContextValue {
   categories: Category[];
   items: Item[];
   messages: Message[];
+  stats: DashboardStats;
   loading: boolean;
-  addCategory: (category: Omit<Category, "id" | "created_at">) => Promise<void>;
+  addCategory: (category: Omit<Category, "id">) => Promise<void>;
   updateCategory: (id: string, updates: TablesUpdate<'categories'>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
-  addItem: (item: Omit<Item, "id" | "created_at">) => Promise<void>;
+  addItem: (item: Omit<Item, "id">) => Promise<void>;
   updateItem: (id: string, updates: TablesUpdate<'items'>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
-  addMessage: (message: Omit<Message, "id" | "date" | "isRead">) => Promise<void>;
+  addMessage: (message: Omit<Message, "id" | "date" | "is_read">) => Promise<void>;
   deleteMessage: (id: string) => Promise<void>;
   markMessageAsRead: (id: string) => Promise<void>;
 }
@@ -34,6 +32,17 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [items, setItems] = useState<Item[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Calculate dashboard stats based on current data
+  const stats: DashboardStats = {
+    totalLostItems: items.filter(item => item.status === 'lost').length,
+    totalFoundItems: items.filter(item => item.status === 'found').length,
+    totalClaimedItems: items.filter(item => item.status === 'claimed').length,
+    totalPendingItems: items.filter(item => ['lost', 'found'].includes(item.status)).length,
+    totalMessages: messages.length,
+    activeCategories: categories.filter(cat => cat.is_active).length,
+    inactiveCategories: categories.filter(cat => !cat.is_active).length,
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -73,16 +82,20 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     fetchData();
   }, []);
 
-  const addCategory = async (category: Omit<Category, "id" | "created_at">) => {
+  const addCategory = async (category: Omit<Category, "id">) => {
     try {
       const { data, error } = await supabase
         .from('categories')
-        .insert([category])
+        .insert([{
+          name: category.name,
+          description: category.description,
+          is_active: category.is_active
+        }])
         .select('*')
         .single();
 
       if (error) throw error;
-      setCategories(prev => [...prev, data]);
+      setCategories(prev => [...prev, data as Category]);
     } catch (error: any) {
       console.error('Error adding category:', error.message);
     }
@@ -118,16 +131,26 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  const addItem = async (item: Omit<Item, "id" | "created_at">) => {
+  const addItem = async (item: Omit<Item, "id">) => {
     try {
       const { data, error } = await supabase
         .from('items')
-        .insert([item])
+        .insert([{
+          title: item.title,
+          description: item.description,
+          category: item.category,
+          status: item.status,
+          date: item.date,
+          location: item.location,
+          image: item.image,
+          contact_email: item.contact_email,
+          created_by: item.created_by,
+        }])
         .select('*')
         .single();
 
       if (error) throw error;
-      setItems(prev => [...prev, data]);
+      setItems(prev => [...prev, data as Item]);
     } catch (error: any) {
       console.error('Error adding item:', error.message);
     }
@@ -163,24 +186,22 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  const addMessage = async (message: Omit<Message, "id" | "date" | "isRead">) => {
+  const addMessage = async (message: Omit<Message, "id" | "date" | "is_read">) => {
     try {
       const { data, error } = await supabase
         .from('messages')
-        .insert([
-          {
-            name: message.name,
-            email: message.email,
-            subject: message.subject,
-            message: message.message,
-          }
-        ])
+        .insert([{
+          name: message.name,
+          email: message.email,
+          subject: message.subject,
+          message: message.message,
+        }])
         .select('*')
         .single();
 
       if (error) throw error;
       
-      setMessages(prev => [...prev, { ...data, isRead: data.is_read }]);
+      setMessages(prev => [...prev, data as Message]);
       
       return;
     } catch (error: any) {
@@ -223,6 +244,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     categories,
     items,
     messages,
+    stats,
     loading,
     addCategory,
     updateCategory,

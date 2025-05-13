@@ -33,7 +33,7 @@ const ItemForm: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get only active categories
-  const activeCategories = categories.filter(cat => cat.isActive);
+  const activeCategories = categories.filter(cat => cat.is_active);
 
   const handleImageChange = (file: File | null, preview: string | undefined) => {
     setImageFile(file);
@@ -87,9 +87,9 @@ const ItemForm: React.FC = () => {
         date: date || new Date().toISOString(),
         location,
         image: imagePath,
-        contactEmail,
-        createdBy: user.id,
-      } as Item);
+        contact_email: contactEmail,
+        created_by: user.id,
+      });
 
       // Show success message
       toast({
