@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useData } from '@/context/DataContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,12 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, Eye, Info, MessageSquare, Plus, Tag, Trash, User, X } from 'lucide-react';
+import { Check, Eye, Info, MessageSquare, Plus, Tag, Trash, User, Users, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Badge } from '@/components/ui/badge';
 
 const AdminPanel: React.FC = () => {
   const { categories, items, messages, addCategory, updateCategory, deleteCategory, updateItem, deleteItem, deleteMessage, markMessageAsRead } = useData();
   const { toast } = useToast();
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   // State for category dialog
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
@@ -25,6 +28,33 @@ const AdminPanel: React.FC = () => {
 
   // State for message details
   const [selectedMessage, setSelectedMessage] = useState<string | null>(null);
+
+  // Fetch users from Supabase
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        setUsers(data || []);
+      } catch (error: any) {
+        console.error('Error fetching users:', error.message);
+        toast({
+          title: "Error",
+          description: "Failed to fetch users. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [toast]);
 
   const handleAddCategory = () => {
     addCategory({
@@ -107,7 +137,7 @@ const AdminPanel: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
           <p className="text-muted-foreground">
-            Manage categories, items, and messages
+            Manage categories, items, messages and users
           </p>
         </div>
 
@@ -126,11 +156,12 @@ const AdminPanel: React.FC = () => {
               Messages
             </TabsTrigger>
             <TabsTrigger value="users" className="flex items-center">
-              <User className="h-4 w-4 mr-2" />
+              <Users className="h-4 w-4 mr-2" />
               Users
             </TabsTrigger>
           </TabsList>
 
+          {/* Categories Tab Content */}
           <TabsContent value="categories">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-semibold">Manage Categories</h2>
@@ -228,6 +259,7 @@ const AdminPanel: React.FC = () => {
             </Dialog>
           </TabsContent>
 
+          {/* Items Tab Content */}
           <TabsContent value="items">
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Manage Items</h2>
@@ -318,9 +350,10 @@ const AdminPanel: React.FC = () => {
             </div>
           </TabsContent>
 
+          {/* Messages Tab Content */}
           <TabsContent value="messages">
             <div className="space-y-6">
-              <h2 className="text-xl font-semibold">User Messages</h2>
+              <h2 className="text-xl font-semibold">User Messages & Feedback</h2>
 
               {messages.length === 0 ? (
                 <div className="text-center py-12">
@@ -340,6 +373,9 @@ const AdminPanel: React.FC = () => {
                             <span>{message.subject}</span>
                             {!message.isRead && (
                               <span className="ml-2 h-2 w-2 rounded-full bg-blue-500"></span>
+                            )}
+                            {message.subject.includes('Feedback:') && (
+                              <Badge className="ml-2 bg-purple text-white">Feedback</Badge>
                             )}
                           </div>
                           <span className="text-sm text-muted-foreground">
@@ -405,20 +441,69 @@ const AdminPanel: React.FC = () => {
             </div>
           </TabsContent>
 
+          {/* Users Tab Content */}
           <TabsContent value="users">
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Manage Users</h2>
               
-              <div className="text-center py-12">
-                <User className="mx-auto h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-medium">User Management</h3>
-                <p className="mt-2 text-muted-foreground">
-                  This feature will be implemented in a future update.
-                </p>
-                <p className="text-muted-foreground">
-                  Currently the system has default admin and student accounts.
-                </p>
-              </div>
+              {loading ? (
+                <div className="text-center py-12">
+                  <p>Loading users...</p>
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-12">
+                  <User className="mx-auto h-12 w-12 text-muted-foreground" />
+                  <h3 className="mt-4 text-lg font-medium">No users found</h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Users will appear here once they register.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Student ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Department</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Year</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Joined</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {user.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {user.email}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Badge className={user.role === 'admin' ? "bg-purple" : "bg-blue-500"}>
+                              {user.role}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {user.student_id || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {user.department || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {user.year || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            {new Date(user.created_at).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </TabsContent>
         </Tabs>

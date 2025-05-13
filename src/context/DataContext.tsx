@@ -98,7 +98,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (user?.role === 'admin') {
         const { data: messagesData, error: messagesError } = await supabase
           .from('messages')
-          .select('*');
+          .select('*')
+          .order('date', { ascending: false });
 
         if (messagesError) throw messagesError;
         
@@ -283,9 +284,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           isRead: data.is_read
         };
 
-        setMessages(prevMessages => [...prevMessages, formattedMessage]);
+        setMessages(prevMessages => [formattedMessage, ...prevMessages]);
         updateStats(items, categories, [...messages, formattedMessage]);
       }
+      
+      return data;
     } catch (error: any) {
       console.error('Error adding message:', error.message);
       toast({

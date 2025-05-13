@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,22 +8,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { useData } from '@/context/DataContext';
 import { Mail, MapPin, Phone } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const ContactPage: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { addMessage } = useData();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      addMessage({
+      await addMessage({
         name,
         email,
         subject,
@@ -37,8 +38,6 @@ const ContactPage: React.FC = () => {
       });
 
       // Reset form
-      setName('');
-      setEmail('');
       setSubject('');
       setMessage('');
     } catch (error) {

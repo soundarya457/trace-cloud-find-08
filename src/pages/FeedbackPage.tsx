@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { StarIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const FeedbackPage: React.FC = () => {
   const { user } = useAuth();
@@ -22,13 +22,32 @@ const FeedbackPage: React.FC = () => {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [department, setDepartment] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [year, setYear] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      addMessage({
+      // First update the user profile with the additional information if available
+      if (user && (department || studentId || year)) {
+        const updates = {};
+        if (department) Object.assign(updates, { department });
+        if (studentId) Object.assign(updates, { student_id: studentId });
+        if (year) Object.assign(updates, { year });
+        
+        const { error } = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', user.id);
+          
+        if (error) throw error;
+      }
+      
+      // Then submit the feedback
+      await addMessage({
         name,
         email,
         subject: `Feedback: ${rating} Stars`,
@@ -87,6 +106,38 @@ const FeedbackPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              {user?.role === 'student' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="studentId">Student ID</Label>
+                    <Input
+                      id="studentId"
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="department">Department</Label>
+                    <Input
+                      id="department"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="year">Year</Label>
+                    <Input
+                      id="year"
+                      value={year}
+                      onChange={(e) => setYear(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>How would you rate your experience?</Label>
