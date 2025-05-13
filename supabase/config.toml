@@ -1,2 +1,5 @@
 
 project_id = "sxdwjfvtrllrimytryxr"
+
+[functions.handle_new_user]
+verify_jwt = true

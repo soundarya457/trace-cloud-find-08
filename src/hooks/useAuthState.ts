@@ -24,11 +24,23 @@ export function useAuthState() {
               .single();
 
             if (profile) {
+              // Determine the role - get from database or fallback to email check
+              let userRole = profile.role as 'admin' | 'student';
+              
+              // Double-check the role based on email if needed
+              const email = currentSession.user.email || '';
+              const isAdminEmail = email.endsWith('@tracecloud.rit.edu') || email.endsWith('ritchennai.edu.in');
+              
+              if (isAdminEmail && userRole !== 'admin') {
+                // This is a safety check in case the database wasn't updated correctly
+                userRole = 'admin';
+              }
+
               setUser({
                 id: currentSession.user.id,
                 name: profile.name,
                 email: profile.email,
-                role: profile.role as 'admin' | 'student',
+                role: userRole,
               });
             }
           }, 0);
@@ -51,11 +63,23 @@ export function useAuthState() {
           .single()
           .then(({ data: profile }) => {
             if (profile) {
+              // Determine the role - get from database or fallback to email check
+              let userRole = profile.role as 'admin' | 'student';
+              
+              // Double-check the role based on email if needed
+              const email = currentSession.user.email || '';
+              const isAdminEmail = email.endsWith('@tracecloud.rit.edu') || email.endsWith('ritchennai.edu.in');
+              
+              if (isAdminEmail && userRole !== 'admin') {
+                // This is a safety check in case the database wasn't updated correctly
+                userRole = 'admin';
+              }
+
               setUser({
                 id: currentSession.user.id,
                 name: profile.name,
                 email: profile.email,
-                role: profile.role as 'admin' | 'student',
+                role: userRole,
               });
             }
             setIsLoading(false);

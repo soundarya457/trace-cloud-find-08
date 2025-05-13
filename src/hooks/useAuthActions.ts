@@ -67,12 +67,17 @@ export function useAuthActions() {
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     setIsLoading(true);
     try {
+      // Check if the email ends with one of our admin domains
+      const isAdminEmail = email.endsWith('@tracecloud.rit.edu') || email.endsWith('ritchennai.edu.in');
+      
       const { error, data } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             name,
+            // Pass role information in user metadata - will be handled by the database trigger
+            role: isAdminEmail ? 'admin' : 'student'
           },
         },
       });
