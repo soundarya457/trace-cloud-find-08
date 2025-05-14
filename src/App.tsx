@@ -50,30 +50,105 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 
 const queryClient = new QueryClient();
 
-const AppRoutes = () => {
+// Wrap DataProvider around components that need access to the data context
+const AppWithProviders = () => {
   return (
-    <Routes>
-      <Route path="/" element={<LoginPage />} />
-      
-      {/* Protected Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/lost-found" element={<ProtectedRoute><LostFoundPage /></ProtectedRoute>} />
-      <Route path="/post-item" element={<ProtectedRoute><PostItemPage /></ProtectedRoute>} />
-      <Route path="/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
-      <Route path="/contact" element={<ProtectedRoute><ContactPage /></ProtectedRoute>} />
-      <Route path="/feedback" element={<ProtectedRoute><FeedbackPage /></ProtectedRoute>} />
-      
-      {/* Admin Routes */}
-      <Route path="/admin" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      <Route path="/admin/categories" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      <Route path="/admin/messages" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      <Route path="/admin/users" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      <Route path="/admin/contact-info" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      <Route path="/admin/system-info" element={<AdminRoute><AdminPanel /></AdminRoute>} />
-      
-      {/* Catch-all route */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        
+        {/* Protected Routes - Wrapped with DataProvider */}
+        <Route path="/dashboard" element={
+          <ProtectedRoute>
+            <DataProvider>
+              <DashboardPage />
+            </DataProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/lost-found" element={
+          <ProtectedRoute>
+            <DataProvider>
+              <LostFoundPage />
+            </DataProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/post-item" element={
+          <ProtectedRoute>
+            <DataProvider>
+              <PostItemPage />
+            </DataProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/about" element={
+          <ProtectedRoute>
+            <DataProvider>
+              <AboutPage />
+            </DataProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/contact" element={
+          <ProtectedRoute>
+            <DataProvider>
+              <ContactPage />
+            </DataProvider>
+          </ProtectedRoute>
+        } />
+        <Route path="/feedback" element={
+          <ProtectedRoute>
+            <DataProvider>
+              <FeedbackPage />
+            </DataProvider>
+          </ProtectedRoute>
+        } />
+        
+        {/* Admin Routes - Wrapped with DataProvider */}
+        <Route path="/admin" element={
+          <AdminRoute>
+            <DataProvider>
+              <AdminPanel />
+            </DataProvider>
+          </AdminRoute>
+        } />
+        <Route path="/admin/categories" element={
+          <AdminRoute>
+            <DataProvider>
+              <AdminPanel />
+            </DataProvider>
+          </AdminRoute>
+        } />
+        <Route path="/admin/messages" element={
+          <AdminRoute>
+            <DataProvider>
+              <AdminPanel />
+            </DataProvider>
+          </AdminRoute>
+        } />
+        <Route path="/admin/users" element={
+          <AdminRoute>
+            <DataProvider>
+              <AdminPanel />
+            </DataProvider>
+          </AdminRoute>
+        } />
+        <Route path="/admin/contact-info" element={
+          <AdminRoute>
+            <DataProvider>
+              <AdminPanel />
+            </DataProvider>
+          </AdminRoute>
+        } />
+        <Route path="/admin/system-info" element={
+          <AdminRoute>
+            <DataProvider>
+              <AdminPanel />
+            </DataProvider>
+          </AdminRoute>
+        } />
+        
+        {/* Catch-all route */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 
@@ -81,13 +156,9 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <DataProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
-        </DataProvider>
+        <Toaster />
+        <Sonner />
+        <AppWithProviders />
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
