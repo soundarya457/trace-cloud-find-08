@@ -31,8 +31,7 @@ const ContactPage: React.FC = () => {
         name,
         email,
         subject,
-        message,
-        is_read: false,
+        message
       });
 
       toast({

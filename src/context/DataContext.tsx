@@ -16,7 +16,7 @@ interface DataContextValue {
   addItem: (item: Omit<Item, "id" | "created_at">) => Promise<void>;
   updateItem: (id: string, updates: TablesUpdate<'items'>) => Promise<void>;
   deleteItem: (id: string) => Promise<void>;
-  addMessage: (message: Omit<Message, "id" | "date" | "is_read" | "created_at">) => Promise<void>;
+  addMessage: (message: Omit<Message, "id" | "date" | "created_at" | "is_read">) => Promise<void>;
   deleteMessage: (id: string) => Promise<void>;
   markMessageAsRead: (id: string) => Promise<void>;
 }

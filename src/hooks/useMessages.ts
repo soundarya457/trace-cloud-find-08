@@ -21,10 +21,11 @@ export const useMessages = () => {
     return data;
   };
 
-  const addMessage = async (messageData: Omit<Message, 'id' | 'date' | 'created_at'>) => {
+  const addMessage = async (messageData: Omit<Message, 'id' | 'date' | 'created_at' | 'is_read'>) => {
     const newMessage = {
       id: uuidv4(),
       date: new Date().toISOString(),
+      is_read: false,
       ...messageData,
     };
 
