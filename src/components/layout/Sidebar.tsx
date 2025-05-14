@@ -11,7 +11,8 @@ import {
   MessageSquare, 
   Users, 
   Mail,
-  Info
+  Info,
+  Send
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -36,6 +37,9 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
     { name: 'Dashboard', icon: <Home className="h-5 w-5" />, path: '/dashboard' },
     { name: 'Lost and Found', icon: <Search className="h-5 w-5" />, path: '/lost-found' },
     { name: 'Post an Item', icon: <Archive className="h-5 w-5" />, path: '/post-item' },
+    { name: 'Contact Us', icon: <Mail className="h-5 w-5" />, path: '/contact' },
+    { name: 'Send Feedback', icon: <Send className="h-5 w-5" />, path: '/feedback' },
+    { name: 'About', icon: <Info className="h-5 w-5" />, path: '/about' },
     { name: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings' },
   ];
 

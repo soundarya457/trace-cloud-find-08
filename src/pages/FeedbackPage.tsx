@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +53,7 @@ const FeedbackPage: React.FC = () => {
         email,
         subject: `Feedback: ${rating} Stars`,
         message: feedback,
+        is_read: false,
       });
 
       toast({
